@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Parkinsans:wght@300..800&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+:root {
+    --background: #3e54c1;
+    --foreground: #ededed;
+    --font-family : 'Parkinsans', sans-serif;
+}
+
+body {
+    background-color: var(--background);
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.main-content-div {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--foreground);
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 300px;
+    text-align: center;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+    align-items: center;
+    justify-content: center;
+    width: 400px;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    
+}
+
+.subhead-text {
+    color: #646569;
+    font-size: 15px;
+    margin-bottom: 20px;
+}
+
+.content-div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.gen-button {
+    background-color: var(--background);
+    border: none;
+    border-radius: 5px;
+    color: var(--foreground);
+    cursor: pointer;
+    font-size: 15px;
+    margin-top: 20px;
+    padding: 10px;
+    transition: background-color 0.3s, box-shadow 0.3s, transform 0.1s;
+    font-family: var(--font-family);
+    width: 100%;
+}
+
+.gen-button:hover {
+    box-shadow: 0 0 10px rgba(62, 84, 193, 0.5);
+}
+
+.gen-button:active {
+    transform: translateY(3px);
+    
+}
+
+.dropbox-input-div {
+    display: flex;
+    flex-direction: column;
+    background-color: #f5f5f5;
+    border-radius: 10px;
+    margin-top: 20px;
+    padding: 100px;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: rgb(204, 219, 232) 3px 3px 6px 0px inset, rgba(255, 255, 255, 0.5) -3px -3px 6px 1px inset  ; 
+}
+
+.choose-file {
+    padding-top: 25px;
+    padding-bottom: 40px;
+    text-align-last: center;
+}
+
+.about-creator {
+    background-color: #f5f5f5;
+    color: #646569;
+    font-size: 12px;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 50px;
+    text-align: right;
+}
+
+.creator {
+    text-align: right;
+}
+
+a {
+    color: #3e54c1;
+    text-decoration: none;
+}
+
+
+/* Mobile Friendly Adjustments */
+@media (max-width: 600px) {
+    .gen-button {
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    .dropbox-input-div {
+        padding: 50px;
+    }
+
+    .choose-file {
+        padding-top: 15px;
+        padding-bottom: 30px;
+    }
+    .main-content-div {
+        margin: 25px;
+    }
+
+    .dropbox-input-div{
+        padding:25%;
+    }
+}
