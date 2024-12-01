@@ -79,58 +79,89 @@ const normalizeText = (text) => {
 };
 
 
+// Function to parse the schedule from the normalized text
 const schedule = (pageText) => {
     console.log("=== Processing Schedule ===");
+
+    // Extract relevant content based on keywords "UNITS" and "TOTAL UNITS"
+    // The idea is to extract the part of the pageText between "UNITS" and "TOTAL UNITS"
+    const contentStart = pageText.indexOf("UNITS") + 5;  // Start after the keyword "UNITS"
+    const contentEnd = pageText.indexOf("TOTAL UNITS"); // End before the keyword "TOTAL UNITS"
     
-    const contentStart = pageText.indexOf("UNITS") + 5;
-    const contentEnd = pageText.indexOf("TOTAL UNITS");
+    // The relevantText holds the portion of the page that contains the actual schedule
     const relevantText = pageText.substring(contentStart, contentEnd).trim();
-    
+
     console.log("Processing text:", relevantText);
-    
+
+    // Regex to find occurrences of ".0" (to separate lines or values in the content)
+    const regex = /\d+\.0/g;  // This regex matches any number followed by ".0"
+    let combinedLines = [];
+    let previousIndex = 0;
+
+    // Iterate through all occurrences of ".0" to split the text into lines
+    let match;
+    while ((match = regex.exec(relevantText)) !== null) {
+        // Extract the part of the string before and after the current match
+        const beforeMatch = relevantText.substring(previousIndex, match.index + match[0].length);
+        const afterMatch = relevantText.substring(match.index + match[0].length).trim();
+
+        // Split the beforeMatch and afterMatch into individual lines
+        const linesBefore = beforeMatch.split("\n");
+        const linesAfter = afterMatch.split("\n");
+
+        // Combine the lines before the match with the combined lines array
+        combinedLines = [...combinedLines, ...linesBefore];
+
+        // Move the previousIndex to the end of the current match for the next iteration
+        previousIndex = regex.lastIndex;
+    }
+
+    // After processing all matches, split the remaining part of the string
+    const remainingText = relevantText.substring(previousIndex).trim();
+    const remainingLines = remainingText.split("\n");
+
+    // Add any remaining lines after the last match
+    combinedLines = [...combinedLines, ...remainingLines];
+    console.log("Combined lines:", combinedLines);
+
     const scheduleArray = [];
     
-    // Split into individual subject entries using course codes as delimiters
-    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+((?:[A-Z][A-Za-z\s]+[12]?)+(?:\s+(?:AND|&)?\s+[A-Z][A-Za-z\s]+)*)\s+([\w\/]+(?:\s+\d+)?)\s+([MTWTHFS]+)\s+([\d:APM\s-]+)\s+(?:ROOM\s+)?([\/\w\d]+)\s+([\d.]+)/g;
-    
-    const dayMap = {
-        M: 'Monday',
-        T: 'Tuesday',
-        W: 'Wednesday',
-        TH: 'Thursday',
-        F: 'Friday',
-        S: 'Saturday',
-        SU: 'Sunday'
-    };
-    
-    let match;
-    while ((match = subjectPattern.exec(relevantText)) !== null) {
-        const [_, subjectCode, description, section, day, time, room, units] = match;
-        
-        // Process days
-        const dayCodes = day.match(/TH|[MTWFS]/g) || [];
-        const days = dayCodes.map(d => dayMap[d] || d).join(', ');
-        
-        // Clean up room number
-        const roomNumber = room.includes('VR') ? 
-            room.trim() : 
-            room.split('/')[0].trim();
-            
-        // Create entry
-        scheduleArray.push({
-            subjectCode: subjectCode.trim(),
-            description: description.trim(),
-            section: section.trim(),
-            day: days,
-            schedule: time.trim(),
-            room: roomNumber.startsWith('VR') ? roomNumber : `Room ${roomNumber}`,
-            units: units.trim()
-        });
-    }
-    
-    return JSON.stringify(scheduleArray, null, 2);
-};
+    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+([A-Z\s.']+)\s+([A-Z\d]+)\s+((?:[MTWTHFS]+\s[\d:APM\s-]+ROOM\s+\d+\s+)+)([\d.]+)/g;
 
+    // Regular expression to match individual schedule entries (day, time, room)
+    const schedulePattern = /([MTWTHFS]+)\s+([\d:APM\s-]+)\s+ROOM\s+(\d+)/g;
+
+    // Iterate through each line in combinedLines for further processing
+    combinedLines.forEach((line) => {
+        if (line.trim() === "") return;  // Skip empty lines
+        
+        let match;
+        while ((match = subjectPattern.exec(line)) !== null) {
+            // Extract the individual components for each match
+            const [_, subjectCode, description, section, scheduleBlock, units] = match;
+
+            let scheduleMatch;
+            while ((scheduleMatch = schedulePattern.exec(scheduleBlock)) !== null) {
+                // Extract the details of each schedule (day, time, room)
+                const [__, day, time, room] = scheduleMatch;
+                
+                // Push the extracted data into the scheduleArray
+                scheduleArray.push({
+                    subjectCode: subjectCode.trim(),
+                    description: description.trim(),
+                    section: section.trim(),
+                    day: day.trim(),
+                    schedule: time.trim(),
+                    room: `Room ${room.trim()}`,
+                    units: units.trim()
+                });
+            }
+        }
+    });
+
+    // Return the final array of parsed schedule data
+    return JSON.stringify(scheduleArray, null, 2); 
+};
 
 const logScheduleJSON = (pageText) => {
   const scheduleJSON = schedule(pageText);
