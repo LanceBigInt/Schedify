@@ -64,18 +64,18 @@ document.getElementById('gen-button').addEventListener('click', function () {
 });
 
 const normalizeText = (text) => {
-  console.log("=== Starting Text Normalization ===");
-  console.log("Original text:", text);
-  
-  // Remove multiple spaces, tabs, and newlines
-  const normalized = text
-      .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
-      .replace(/\n+/g, ' ')  // Replace newlines with space
-      .trim();               // Remove leading/trailing whitespace
-  
-  console.log("Normalized text:", normalized);
-  console.log("=== Normalization Complete ===");
-  return normalized;
+    console.log("=== Starting Text Normalization ===");
+    console.log("Original text:", text);
+
+    // Remove multiple spaces, tabs, and newlines
+    const normalized = text
+        .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
+        .replace(/\n+/g, ' ')  // Replace newlines with space
+        .trim();               // Remove leading/trailing whitespace
+
+    console.log("Normalized text:", normalized);
+    console.log("=== Normalization Complete ===");
+    return normalized;
 };
 
 
@@ -84,86 +84,83 @@ const schedule = (pageText) => {
     console.log("=== Processing Schedule ===");
 
     // Extract relevant content based on keywords "UNITS" and "TOTAL UNITS"
-    // The idea is to extract the part of the pageText between "UNITS" and "TOTAL UNITS"
-    const contentStart = pageText.indexOf("UNITS") + 5;  // Start after the keyword "UNITS"
-    const contentEnd = pageText.indexOf("TOTAL UNITS"); // End before the keyword "TOTAL UNITS"
-    
-    // The relevantText holds the portion of the page that contains the actual schedule
+    const contentStart = pageText.indexOf("UNITS") + 5;
+    const contentEnd = pageText.indexOf("TOTAL UNITS");
     const relevantText = pageText.substring(contentStart, contentEnd).trim();
 
     console.log("Processing text:", relevantText);
 
-    // Regex to find occurrences of ".0" (to separate lines or values in the content)
-    const regex = /\d+\.0/g;  // This regex matches any number followed by ".0"
+    // Improved regex patterns to handle all cases
+    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+([A-Z\s.'&]+)\s+([A-Z0-9]+)\s+((?:[MTWTHFS]+a?\s+[\d:APM\s-]+(?:ROOM|Room|VR)\s*[^\s]+\s*)+)([\d.]+)/g;
+    const schedulePattern = /([MTWTHFS]+a?)\s+([\d:APM\s-]+)\s+(?:ROOM|Room|VR)\s*([^\s]+)/g;
+
+    // Split text into course entries using .0 as delimiter
+    const regex = /\d+\.0/g;
     let combinedLines = [];
     let previousIndex = 0;
 
-    // Iterate through all occurrences of ".0" to split the text into lines
     let match;
     while ((match = regex.exec(relevantText)) !== null) {
-        // Extract the part of the string before and after the current match
         const beforeMatch = relevantText.substring(previousIndex, match.index + match[0].length);
-        const afterMatch = relevantText.substring(match.index + match[0].length).trim();
-
-        // Split the beforeMatch and afterMatch into individual lines
-        const linesBefore = beforeMatch.split("\n");
-        const linesAfter = afterMatch.split("\n");
-
-        // Combine the lines before the match with the combined lines array
-        combinedLines = [...combinedLines, ...linesBefore];
-
-        // Move the previousIndex to the end of the current match for the next iteration
+        combinedLines.push(beforeMatch.trim());
         previousIndex = regex.lastIndex;
     }
 
-    // After processing all matches, split the remaining part of the string
+    // Add remaining text after last match
     const remainingText = relevantText.substring(previousIndex).trim();
-    const remainingLines = remainingText.split("\n");
+    if (remainingText) {
+        combinedLines.push(remainingText);
+    }
 
-    // Add any remaining lines after the last match
-    combinedLines = [...combinedLines, ...remainingLines];
-    console.log("Combined lines:", combinedLines);
-
+    // Process each line and build schedule array
     const scheduleArray = [];
-    
-    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+([A-Z\s.']+)\s+([A-Z\d]+)\s+((?:[MTWTHFS]+\s[\d:APM\s-]+ROOM\s+\d+\s+)+)([\d.]+)/g;
+    const processedCourses = new Map(); // Track courses to combine multiple schedules
 
-    // Regular expression to match individual schedule entries (day, time, room)
-    const schedulePattern = /([MTWTHFS]+)\s+([\d:APM\s-]+)\s+ROOM\s+(\d+)/g;
-
-    // Iterate through each line in combinedLines for further processing
     combinedLines.forEach((line) => {
-        if (line.trim() === "") return;  // Skip empty lines
-        
-        let match;
-        while ((match = subjectPattern.exec(line)) !== null) {
-            // Extract the individual components for each match
-            const [_, subjectCode, description, section, scheduleBlock, units] = match;
+        if (line.trim() === "") return;
+
+        let courseMatch;
+        while ((courseMatch = subjectPattern.exec(line)) !== null) {
+            const [_, code, name, section, scheduleBlock, units] = courseMatch;
+            
+            const courseKey = `${code.trim()}-${section.trim()}`;
+            const schedules = [];
 
             let scheduleMatch;
             while ((scheduleMatch = schedulePattern.exec(scheduleBlock)) !== null) {
-                // Extract the details of each schedule (day, time, room)
                 const [__, day, time, room] = scheduleMatch;
                 
-                // Push the extracted data into the scheduleArray
-                scheduleArray.push({
-                    subjectCode: subjectCode.trim(),
-                    description: description.trim(),
-                    section: section.trim(),
+                schedules.push({
                     day: day.trim(),
                     schedule: time.trim(),
-                    room: `Room ${room.trim()}`,
-                    units: units.trim()
+                    room: room.includes('VR') ? 
+                    `${room.trim()}` : 
+                    `Room ${room.trim()}`
                 });
+            }
+
+            // Combine schedules for the same course
+            if (processedCourses.has(courseKey)) {
+                const existingCourse = processedCourses.get(courseKey);
+                existingCourse.schedules.push(...schedules);
+            } else {
+                const courseEntry = {
+                    code: code.trim(),
+                    name: name.trim(),
+                    section: section.trim(),
+                    units: units,
+                    schedules: schedules
+                };
+                processedCourses.set(courseKey, courseEntry);
+                scheduleArray.push(courseEntry);
             }
         }
     });
 
-    // Return the final array of parsed schedule data
-    return JSON.stringify(scheduleArray, null, 2); 
+    return JSON.stringify({ courses: scheduleArray }, null, 2);
 };
 
 const logScheduleJSON = (pageText) => {
-  const scheduleJSON = schedule(pageText);
-  console.log(scheduleJSON);
+    const scheduleJSON = schedule(pageText);
+    console.log(scheduleJSON);
 };
