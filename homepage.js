@@ -91,7 +91,7 @@ const schedule = (pageText) => {
     console.log("Processing text:", relevantText);
 
     // Improved regex patterns to handle all cases
-    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+([A-Z\s.'&]+)\s+([A-Z0-9]+)\s+((?:[MTWTHFS]+a?\s+[\d:APM\s-]+(?:ROOM|Room|VR)\s*[^\s]+\s*)+)([\d.]+)/g;
+    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+([A-Z\sA-Z\s0-9.'&]+)\s+([A-Z0-9]+)\s+((?:[MTWTHFS]+a?\s+[\d:APM\s-]+(?:ROOM|Room|VR)\s*[^\s]+\s*)+)([\d.]+)/g;
     const schedulePattern = /([MTWTHFS]+a?)\s+([\d:APM\s-]+)\s+(?:ROOM|Room|VR)\s*([^\s]+)/g;
 
     // Split text into course entries using .0 as delimiter
