@@ -64,75 +64,103 @@ document.getElementById('gen-button').addEventListener('click', function () {
 });
 
 const normalizeText = (text) => {
-  console.log("=== Starting Text Normalization ===");
-  console.log("Original text:", text);
-  
-  // Remove multiple spaces, tabs, and newlines
-  const normalized = text
-      .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
-      .replace(/\n+/g, ' ')  // Replace newlines with space
-      .trim();               // Remove leading/trailing whitespace
-  
-  console.log("Normalized text:", normalized);
-  console.log("=== Normalization Complete ===");
-  return normalized;
+    console.log("=== Starting Text Normalization ===");
+    console.log("Original text:", text);
+
+    // Remove multiple spaces, tabs, and newlines
+    const normalized = text
+        .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
+        .replace(/\n+/g, ' ')  // Replace newlines with space
+        .trim();               // Remove leading/trailing whitespace
+
+    console.log("Normalized text:", normalized);
+    console.log("=== Normalization Complete ===");
+    return normalized;
 };
 
 
+// Function to parse the schedule from the normalized text
 const schedule = (pageText) => {
     console.log("=== Processing Schedule ===");
-    
+
+    // Extract relevant content based on keywords "UNITS" and "TOTAL UNITS"
     const contentStart = pageText.indexOf("UNITS") + 5;
     const contentEnd = pageText.indexOf("TOTAL UNITS");
     const relevantText = pageText.substring(contentStart, contentEnd).trim();
-    
+
     console.log("Processing text:", relevantText);
-    
-    const scheduleArray = [];
-    
-    // Split into individual subject entries using course codes as delimiters
-    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+((?:[A-Z][A-Za-z\s]+[12]?)+(?:\s+(?:AND|&)?\s+[A-Z][A-Za-z\s]+)*)\s+([\w\/]+(?:\s+\d+)?)\s+([MTWTHFS]+)\s+([\d:APM\s-]+)\s+(?:ROOM\s+)?([\/\w\d]+)\s+([\d.]+)/g;
-    
-    const dayMap = {
-        M: 'Monday',
-        T: 'Tuesday',
-        W: 'Wednesday',
-        TH: 'Thursday',
-        F: 'Friday',
-        S: 'Saturday',
-        SU: 'Sunday'
-    };
-    
+
+    // Improved regex patterns to handle all cases
+    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+([A-Z\sA-Z\s0-9.'&]+)\s+([A-Z0-9]+)\s+((?:[MTWTHFS]+a?\s+[\d:APM\s-]+(?:ROOM|Room|VR)\s*[^\s]+\s*)+)([\d.]+)/g;
+    const schedulePattern = /([MTWTHFS]+a?)\s+([\d:APM\s-]+)\s+(?:ROOM|Room|VR)\s*([^\s]+)/g;
+
+    // Split text into course entries using .0 as delimiter
+    const regex = /\d+\.0/g;
+    let combinedLines = [];
+    let previousIndex = 0;
+
     let match;
-    while ((match = subjectPattern.exec(relevantText)) !== null) {
-        const [_, subjectCode, description, section, day, time, room, units] = match;
-        
-        // Process days
-        const dayCodes = day.match(/TH|[MTWFS]/g) || [];
-        const days = dayCodes.map(d => dayMap[d] || d).join(', ');
-        
-        // Clean up room number
-        const roomNumber = room.includes('VR') ? 
-            room.trim() : 
-            room.split('/')[0].trim();
-            
-        // Create entry
-        scheduleArray.push({
-            subjectCode: subjectCode.trim(),
-            description: description.trim(),
-            section: section.trim(),
-            day: days,
-            schedule: time.trim(),
-            room: roomNumber.startsWith('VR') ? roomNumber : `Room ${roomNumber}`,
-            units: units.trim()
-        });
+    while ((match = regex.exec(relevantText)) !== null) {
+        const beforeMatch = relevantText.substring(previousIndex, match.index + match[0].length);
+        combinedLines.push(beforeMatch.trim());
+        previousIndex = regex.lastIndex;
     }
-    
-    return JSON.stringify(scheduleArray, null, 2);
+
+    // Add remaining text after last match
+    const remainingText = relevantText.substring(previousIndex).trim();
+    if (remainingText) {
+        combinedLines.push(remainingText);
+    }
+
+    // Process each line and build schedule array
+    const scheduleArray = [];
+    const processedCourses = new Map(); // Track courses to combine multiple schedules
+
+    combinedLines.forEach((line) => {
+        if (line.trim() === "") return;
+
+        let courseMatch;
+        while ((courseMatch = subjectPattern.exec(line)) !== null) {
+            const [_, code, name, section, scheduleBlock, units] = courseMatch;
+            
+            const courseKey = `${code.trim()}-${section.trim()}`;
+            const schedules = [];
+
+            let scheduleMatch;
+            while ((scheduleMatch = schedulePattern.exec(scheduleBlock)) !== null) {
+                const [__, day, time, room] = scheduleMatch;
+                
+                schedules.push({
+                    day: day.trim(),
+                    schedule: time.trim(),
+                    room: room.includes('VR') ? 
+                    `${room.trim()}` : 
+                    `Room ${room.trim()}`
+                });
+            }
+
+            // Combine schedules for the same course
+            if (processedCourses.has(courseKey)) {
+                const existingCourse = processedCourses.get(courseKey);
+                existingCourse.schedules.push(...schedules);
+            } else {
+                const courseEntry = {
+                    code: code.trim(),
+                    name: name.trim(),
+                    section: section.trim(),
+                    units: units,
+                    schedules: schedules
+                };
+                processedCourses.set(courseKey, courseEntry);
+                scheduleArray.push(courseEntry);
+            }
+        }
+    });
+
+    return JSON.stringify({ courses: scheduleArray }, null, 2);
 };
 
-
 const logScheduleJSON = (pageText) => {
-  const scheduleJSON = schedule(pageText);
-  console.log(scheduleJSON);
+    const scheduleJSON = schedule(pageText);
+    console.log(scheduleJSON);
 };
