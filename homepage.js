@@ -16,7 +16,7 @@ fileInput.addEventListener("change", () => {
 // Checking if the PDF.js lib has properly loaded
 if (typeof pdfjsLib === 'undefined') {
     console.error('PDF.js library is not loaded');
-} else {
+} else {    
     console.log('PDF.js library loaded successfully');
 }
 
@@ -161,6 +161,10 @@ const schedule = (pageText) => {
 };
 
 const logScheduleJSON = (pageText) => {
-    const scheduleJSON = schedule(pageText);
     console.log(scheduleJSON);
 };
+
+function JSONtoCalendar() {
+    const scheduleJSON = schedule(pageText);
+    
+}

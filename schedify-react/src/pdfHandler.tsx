@@ -1,41 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
-    <title>Schedify</title>
-</head>
-<body>
-    <div class="main-content-div">
-        <div class="main-content">
-            <h1>Schedify</h1>
-            <p>Organize your day with Schedify</p>
-            <div class="content-div">
-                <div class="dropbox-input-div"> Upload or Drag a PDF</div>
-                <input type ="file" accept="application/pdf" class="choose-file" id = "choose-file"> </input>
-                <button class="gen-button" id = "gen-button">Generate Schedule</button>    
-            </div>
-        </div>
-    </div>
-    <div class="about-creator"> 
-        <p class="creator">Created by <a href="">Linus</a> and <a href="https://www.linkedin.com/in/lancealgabre/" >Lance ❤️</a></p>
-    </div>
-    <!--Moved the positioning of the scripts-->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha512-ml/QKfG3+Yes6TwOzQb7aCNtJF4PUyha6R3w8pSTo/VJSywl7ZreYvvtUso7fKevpsI+pYVVwnu82YO0q3V6eg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script type="text/javascript" src="homepage.js"></script>  
-</body>
-</html>
-
-
-
-
-
-
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy, TextContent } from 'pdfjs-dist/types/src/display/api';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs`;
 
 // Interfaces
 export interface Schedule {
