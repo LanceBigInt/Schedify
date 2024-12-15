@@ -1,39 +1,29 @@
 import { useState, useEffect } from "react";
-import {
-  FileUploadDropzone,
-  FileUploadList,
-  FileUploadRoot,
-} from "@/components/ui/file-upload";
 import { processPDF } from "@/pdfHandler";
 import "./App.css";
-
-// Interfaces
-interface Schedule {
-  day: string;
-  schedule: string;
-  room: string;
-}
-
-interface CourseEntry {
-  code: string;
-  name: string;
-  section: string;
-  units: string;
-  schedules: Schedule[];
-}
-
-interface ParsedSchedule {
-  courses: CourseEntry[];
-}
+import {
+  FileUploadRoot,
+  FileUploadDropzone,
+  FileUploadList,
+} from "./components/ui/file-upload";
 
 function App() {
   const [acceptedFiles, setAcceptedFiles] = useState<File[]>([]);
+  const [showGenerateButton, setShowGenerateButton] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [scheduleData, setScheduleData] = useState<ParsedSchedule | null>(null);
+
+  const handleFileRemoval = () => {
+    setAcceptedFiles([]);
+    setShowGenerateButton(false);
+    setError(null);
+  };
 
   const handleFileChange = async (details: { files: File[] }) => {
-    if (!details.files.length) return;
+    if (!details.files.length) {
+      handleFileRemoval();
+      return true;
+    }
 
     setAcceptedFiles(details.files);
     setIsLoading(true);
@@ -46,7 +36,8 @@ function App() {
       }
 
       const result = await processPDF(file);
-      setScheduleData(result);
+      setShowGenerateButton(true);
+      console.log("Extracted Schedule Data:", result);
     } catch (err) {
       console.error("PDF processing error:", err);
       setError(err instanceof Error ? err.message : "Failed to process PDF");
@@ -64,7 +55,7 @@ function App() {
           );
           setIsLoading(false);
         }
-      }, 100); // 10 second timeout
+      }, 10000); // Changed to 10 seconds (10000ms)
 
       return () => clearTimeout(timeout);
     }
@@ -80,7 +71,7 @@ function App() {
                 Schedify
               </h1>
               <p className="text-sm md:text-base font-light text-gray-700 mt-2">
-                Organize your day with Schedify
+                Organize your schedule with Schedify.
               </p>
               {isLoading && (
                 <div className="mt-4 flex items-center justify-center space-x-2">
@@ -112,31 +103,6 @@ function App() {
                   <p className="text-red-600">{error}</p>
                 </div>
               )}
-              {scheduleData && (
-                <div className="mt-4 space-y-4">
-                  <h2 className="text-lg font-medium">
-                    Processed Courses: {scheduleData.courses.length}
-                  </h2>
-                  {scheduleData.courses.map((course, index) => (
-                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="font-semibold">
-                        {course.code} - {course.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Section: {course.section} | Units: {course.units}
-                      </p>
-                      <div className="mt-2">
-                        {course.schedules.map((schedule, idx) => (
-                          <p key={idx} className="text-sm">
-                            {schedule.day} | {schedule.schedule} |{" "}
-                            {schedule.room}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             <FileUploadRoot
@@ -144,16 +110,25 @@ function App() {
               alignItems="stretch"
               maxFiles={1}
               onFileAccept={handleFileChange}
-              className="w-full"
-              accept="application/pdf"
+              className="w-full relative" // Added relative positioning
             >
               <FileUploadDropzone
                 label="Upload your Certificate of Registration here"
                 description="Only PDF files are accepted"
                 className="flex flex-col bg-gray-100 rounded-lg p-6 md:p-24 text-center items-center justify-center gap-2 shadow-inner text-black hover:shadow-2xl transition-all duration-300 ease-out"
               />
-              <FileUploadList files={acceptedFiles} showSize clearable />
+              <FileUploadList files={acceptedFiles} clearable = {false} showSize={true} />
             </FileUploadRoot>
+            {showGenerateButton && (
+              <div className="animate-in fade-in mt-4 flex justify-center">
+                <button
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors justify-center"
+                  onClick={() => alert("Generating schedule...")}
+                >
+                  Generate Schedule
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>
