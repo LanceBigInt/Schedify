@@ -35,10 +35,34 @@ interface PDFDocument extends PDFDocumentProxy {
 
 const normalizeText = (text: string): string => {
     console.log("=== Starting Text Normalization ===");
+    console.log(text)
     return text
         .replace(/\s+/g, ' ')
         .replace(/\n+/g, ' ')
-        .trim();
+};
+
+const expandDays = (dayString: string): string[] => {
+    const dayMap: { [key: string]: string } = {
+        'M': 'M',
+        'T': 'T',
+        'W': 'W',
+        'TH': 'TH',
+        'F': 'F',
+        'S': 'S'
+    };
+    
+    const days: string[] = [];
+    let i = 0;
+    while (i < dayString.length) {
+        if (i + 1 < dayString.length && dayString.substring(i, i + 2) === 'TH') {
+            days.push(dayMap['TH']);
+            i += 2;
+        } else {
+            days.push(dayMap[dayString[i]]);
+            i += 1;
+        }
+    }
+    return days;
 };
 
 // Export the main function that will process the PDF
@@ -65,72 +89,62 @@ export const processPDF = async (file: File): Promise<ParsedSchedule> => {
 
 const parseSchedule = (pageText: string): ParsedSchedule => {
     console.log("=== Processing Schedule ===");
+    console.log("Raw text:", pageText);
 
     const contentStart: number = pageText.indexOf("UNITS") + 5;
     const contentEnd: number = pageText.indexOf("TOTAL UNITS");
     const relevantText: string = pageText.substring(contentStart, contentEnd).trim();
 
-    const subjectPattern = /([A-Z]+\d*[A-Z]*)\s+([A-Z\s.'&]+)\s+([A-Z0-9]+)\s+((?:[MTWTHFS]+a?\s+[\d:APM\s-]+(?:ROOM|Room|VR)\s*[^\s]+\s*)+)([\d.]+)/g;
+    // Updated pattern to catch all course formats
+    const subjectPattern = /([A-Z0-9]+)\s+([A-Z0-9\s.'&]+?)\s+([A-Z0-9]+)\s+((?:[MTWTHFS]+\s+[\d:APM\s-]+(?:ROOM|Room|VR)\s*[^\s]+\s*)+)([\d.]+)/g;
+    
+    console.log("Relevant text:", relevantText);
     const schedulePattern = /([MTWTHFS]+a?)\s+([\d:APM\s-]+)\s+(?:ROOM|Room|VR)\s*([^\s]+)/g;
-
-    const regex = /\d+\.0/g;
-    const combinedLines: string[] = [];
-    let previousIndex = 0;
-
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(relevantText)) !== null) {
-        const beforeMatch = relevantText.substring(previousIndex, match.index + match[0].length);
-        combinedLines.push(beforeMatch.trim());
-        previousIndex = regex.lastIndex;
-    }
-
-    const remainingText = relevantText.substring(previousIndex).trim();
-    if (remainingText) {
-        combinedLines.push(remainingText);
-    }
 
     const scheduleArray: CourseEntry[] = [];
     const processedCourses = new Map<string, CourseEntry>();
 
-    combinedLines.forEach((line) => {
-        if (line.trim() === "") return;
+    let courseMatch: RegExpExecArray | null;
+    while ((courseMatch = subjectPattern.exec(relevantText)) !== null) {
+        const [, code, name, section, scheduleBlock, units] = courseMatch;
+        console.log("Found course:", code);
+        
+        const courseKey = `${code.trim()}-${section.trim()}`;
+        const schedules: Schedule[] = [];
 
-        let courseMatch: RegExpExecArray | null;
-        while ((courseMatch = subjectPattern.exec(line)) !== null) {
-            const [, code, name, section, scheduleBlock, units] = courseMatch;
+        let scheduleMatch: RegExpExecArray | null;
+        while ((scheduleMatch = schedulePattern.exec(scheduleBlock)) !== null) {
+            const [, dayGroup, time, room] = scheduleMatch;
             
-            const courseKey = `${code.trim()}-${section.trim()}`;
-            const schedules: Schedule[] = [];
-
-            let scheduleMatch: RegExpExecArray | null;
-            while ((scheduleMatch = schedulePattern.exec(scheduleBlock)) !== null) {
-                const [, day, time, room] = scheduleMatch;
-                
+            // Expand compound days
+            const expandedDays = expandDays(dayGroup.trim());
+            expandedDays.forEach(day => {
                 schedules.push({
-                    day: day.trim(),
+                    day,
                     schedule: time.trim(),
                     room: room.includes('VR') ? `${room.trim()}` : `Room ${room.trim()}`
                 });
-            }
-
-            if (processedCourses.has(courseKey)) {
-                const existingCourse = processedCourses.get(courseKey);
-                if (existingCourse) {
-                    existingCourse.schedules.push(...schedules);
-                }
-            } else {
-                const courseEntry: CourseEntry = {
-                    code: code.trim(),
-                    name: name.trim(),
-                    section: section.trim(),
-                    units: units,
-                    schedules: schedules
-                };
-                processedCourses.set(courseKey, courseEntry);
-                scheduleArray.push(courseEntry);
-            }
+            });
         }
-    });
 
+        if (processedCourses.has(courseKey)) {
+            const existingCourse = processedCourses.get(courseKey);
+            if (existingCourse) {
+                existingCourse.schedules.push(...schedules);
+            }
+        } else {
+            const courseEntry: CourseEntry = {
+                code: code.trim(),
+                name: name.trim(),
+                section: section.trim(),
+                units: units,
+                schedules: schedules
+            };
+            processedCourses.set(courseKey, courseEntry);
+            scheduleArray.push(courseEntry);
+        }
+    }
+
+    console.log("Processed courses:", scheduleArray);
     return { courses: scheduleArray };
 };
